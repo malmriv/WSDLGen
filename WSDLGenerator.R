@@ -152,7 +152,9 @@ server <- function(input, output, session) {
         column(4, 
                fluidRow(
                  actionButton(paste0("remove_input_", field$id), "", icon = icon("trash"), style = "margin-top: 25px;"),
-                 actionButton("add_input_field", "", icon = icon("plus"), style = "margin-top: 25px; margin-left: 10px;")
+                 if (field$id == max(sapply(rv$input_fields, `[[`, "id"))) {
+                   actionButton("add_input_field", "", icon = icon("plus"), style = "margin-top: 25px; margin-left: 5px;")
+                 }
                )
         )
       )
@@ -170,7 +172,9 @@ server <- function(input, output, session) {
         column(4, 
                fluidRow(
                  actionButton(paste0("remove_output_", field$id), "", icon = icon("trash"), style = "margin-top: 25px;"),
-                 actionButton("add_output_field", "", icon = icon("plus"), style = "margin-top: 25px; margin-left: 10px;")
+                 if (field$id == max(sapply(rv$output_fields, `[[`, "id"))) {
+                   actionButton("add_output_field", "", icon = icon("plus"), style = "margin-top: 25px; margin-left: 5px;")
+                 }
                )
         )
       )
@@ -178,6 +182,7 @@ server <- function(input, output, session) {
     
     do.call(tagList, output_ui)
   })
+  
   
   # Generar el WSDL y mostrarlo en la vista previa
   observeEvent(input$generate_wsdl, {
