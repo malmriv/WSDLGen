@@ -1,5 +1,6 @@
 library(shiny)
 library(xml2)
+library(shinyAce)
 
 # Función para generar el WSDL
 generate_wsdl <- function(service_name, input_fields, output_fields) {
@@ -76,7 +77,7 @@ ui <- fluidPage(
     ),
     
     mainPanel(
-      verbatimTextOutput("wsdl_preview")
+      aceEditor("wsdl_preview", mode = "xml", theme = "xcode", height = "80vh")
     )
   )
 )
@@ -84,14 +85,12 @@ ui <- fluidPage(
 # Lógica del servidor (Server)
 server <- function(input, output, session) {
   
-  # Usar reactiveValues para almacenar los campos dinámicos
   rv <- reactiveValues(
     input_fields = list(list(id = 1, name = "Campo1", type = "xsd:string")),
     output_fields = list(list(id = 1, name = "Campo1", type = "xsd:string")),
     wsdl_content = ""
   )
   
-  # Función para actualizar los valores actuales de los campos de Input
   update_input_fields <- function() {
     rv$input_fields <- lapply(rv$input_fields, function(field) {
       field$name <- input[[paste0("input_field_name_", field$id)]]
@@ -100,7 +99,6 @@ server <- function(input, output, session) {
     })
   }
   
-  # Función para actualizar los valores actuales de los campos de Output
   update_output_fields <- function() {
     rv$output_fields <- lapply(rv$output_fields, function(field) {
       field$name <- input[[paste0("output_field_name_", field$id)]]
@@ -109,21 +107,18 @@ server <- function(input, output, session) {
     })
   }
   
-  # Añadir un nuevo campo de Input
   observeEvent(input$add_input_field, {
     update_input_fields()
     new_id <- if (length(rv$input_fields) == 0) 1 else max(sapply(rv$input_fields, `[[`, "id")) + 1
     rv$input_fields <- append(rv$input_fields, list(list(id = new_id, name = "", type = "xsd:string")))
   })
   
-  # Añadir un nuevo campo de Output
   observeEvent(input$add_output_field, {
     update_output_fields()
     new_id <- if (length(rv$output_fields) == 0) 1 else max(sapply(rv$output_fields, `[[`, "id")) + 1
     rv$output_fields <- append(rv$output_fields, list(list(id = new_id, name = "", type = "xsd:string")))
   })
   
-  # Eliminar un campo de Input
   observe({
     lapply(rv$input_fields, function(field) {
       observeEvent(input[[paste0("remove_input_", field$id)]], {
@@ -133,7 +128,6 @@ server <- function(input, output, session) {
     })
   })
   
-  # Eliminar un campo de Output
   observe({
     lapply(rv$output_fields, function(field) {
       observeEvent(input[[paste0("remove_output_", field$id)]], {
@@ -143,8 +137,15 @@ server <- function(input, output, session) {
     })
   })
   
-  # Generar UI dinámica para los campos de Input con botón para eliminar
   output$input_fields_ui <- renderUI({
+    # Encabezados
+    header_row <- fluidRow(
+      column(4, h5("Nombre")),   # Encabezado para Nombre
+      column(4, h5("Tipo")),     # Encabezado para Tipo
+      column(4, "")               # Espacio vacío para acciones
+    )
+    
+    # Campos dinámicos
     input_ui <- lapply(rv$input_fields, function(field) {
       fluidRow(
         column(4, textInput(paste0("input_field_name_", field$id), "", value = field$name)),
@@ -160,11 +161,19 @@ server <- function(input, output, session) {
       )
     })
     
-    do.call(tagList, input_ui)
+    # Combinar encabezados y campos
+    tagList(header_row, input_ui)
   })
   
-  # Generar UI dinámica para los campos de Output con botón para eliminar
   output$output_fields_ui <- renderUI({
+    # Encabezados
+    header_row <- fluidRow(
+      column(4, h5("Nombre")),   # Encabezado para Nombre
+      column(4, h5("Tipo")),     # Encabezado para Tipo
+      column(4, "")               # Espacio vacío para acciones
+    )
+    
+    # Campos dinámicos
     output_ui <- lapply(rv$output_fields, function(field) {
       fluidRow(
         column(4, textInput(paste0("output_field_name_", field$id), "", value = field$name)),
@@ -180,22 +189,17 @@ server <- function(input, output, session) {
       )
     })
     
-    do.call(tagList, output_ui)
+    # Combinar encabezados y campos
+    tagList(header_row, output_ui)
   })
   
-  
-  # Generar el WSDL y mostrarlo en la vista previa
   observeEvent(input$generate_wsdl, {
     update_input_fields()
     update_output_fields()
     rv$wsdl_content <- generate_wsdl(input$service_name, rv$input_fields, rv$output_fields)
+    updateAceEditor(session, "wsdl_preview", value = rv$wsdl_content)
   })
   
-  output$wsdl_preview <- renderText({
-    rv$wsdl_content
-  })
-  
-  # Permitir la descarga del WSDL
   output$download_wsdl <- downloadHandler(
     filename = function() {
       paste(input$service_name, "wsdl", sep = ".")
