@@ -61,6 +61,25 @@ generate_wsdl <- function(service_name, input_fields, output_fields) {
 # Interfaz de usuario (UI)
 ui <- fluidPage(
   titlePanel("Generador de WSDL"),
+  tags$head(
+    tags$link(rel="shortcut icon", href="https://tp-utils.s3-eu-west-1.amazonaws.com/images/logo_loginpage.png"),
+    tags$style(HTML("
+      .well { background-color: #d5f5ed;
+      border: 2px solid #7fa39a;}
+      body {
+        background-color: #f7fffd;
+      }
+      .logo {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 10%;
+      }
+    "))),
+  img(src = "https://www.sap.com/dam/application/shared/logos/customer/a-g/avvale-customer-logo.png", class = "logo"),
+  
+  
+  tags$br(),
   
   sidebarLayout(
     sidebarPanel(
@@ -72,13 +91,18 @@ ui <- fluidPage(
       uiOutput("output_fields_ui"),
       
       h4("Acciones:"),
-      actionButton("generate_wsdl", "Actualizar WSDL"),
+      actionButton("generate_wsdl", "Visualizar WSDL", icon=icon("eye")),
       downloadButton("download_wsdl", "Descargar WSDL")
     ),
     
     mainPanel(
-      aceEditor("wsdl_preview", mode = "xml", theme = "xcode", height = "80vh")
+      aceEditor("wsdl_preview", mode = "xml", theme = "textmate", height = "80vh",
+                wordWrap = TRUE, showLineNumbers = TRUE)
     )
+  ),
+  tags$footer(
+    tags$p(paste("©",format(Sys.Date(), "%Y"),"Manuel Almagro (manuel.almagro@avvale.com)","🌱 Avvale"), style = "font-size: 12px; text-align: center; margin: 10px 0;"),
+    style = "position: fixed; bottom: 0; width: 100%; background-color: white; border-top: 1px solid #ccc;"
   )
 )
 
