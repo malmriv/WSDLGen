@@ -67,18 +67,15 @@ ui <- fluidPage(
       
       h4("Campos de la request"),
       uiOutput("input_fields_ui"),
-      actionButton("add_input_field", "Añadir campo a la request"),
-      
       h4("Campos de la response"),
       uiOutput("output_fields_ui"),
-      actionButton("add_output_field", "Añadir campo a la response"),
       
+      h4("Acciones:"),
       actionButton("generate_wsdl", "Actualizar WSDL"),
       downloadButton("download_wsdl", "Descargar WSDL")
     ),
     
     mainPanel(
-      h4("Vista previa del WSDL"),
       verbatimTextOutput("wsdl_preview")
     )
   )
@@ -89,89 +86,120 @@ server <- function(input, output, session) {
   
   # Usar reactiveValues para almacenar los campos dinámicos
   rv <- reactiveValues(
-    input_fields = list(),
-    output_fields = list(),
+    input_fields = list(list(id = 1, name = "Campo1", type = "xsd:string")),
+    output_fields = list(list(id = 1, name = "Campo1", type = "xsd:string")),
     wsdl_content = ""
   )
   
   # Función para actualizar los valores actuales de los campos de Input
   update_input_fields <- function() {
-    rv$input_fields <- lapply(seq_along(rv$input_fields), function(i) {
-      list(name = input[[paste0("input_field_name_", i)]], type = input[[paste0("input_field_type_", i)]])
+    rv$input_fields <- lapply(rv$input_fields, function(field) {
+      field$name <- input[[paste0("input_field_name_", field$id)]]
+      field$type <- input[[paste0("input_field_type_", field$id)]]
+      field
     })
   }
   
   # Función para actualizar los valores actuales de los campos de Output
   update_output_fields <- function() {
-    rv$output_fields <- lapply(seq_along(rv$output_fields), function(i) {
-      list(name = input[[paste0("output_field_name_", i)]], type = input[[paste0("output_field_type_", i)]])
+    rv$output_fields <- lapply(rv$output_fields, function(field) {
+      field$name <- input[[paste0("output_field_name_", field$id)]]
+      field$type <- input[[paste0("output_field_type_", field$id)]]
+      field
     })
   }
   
   # Añadir un nuevo campo de Input
   observeEvent(input$add_input_field, {
     update_input_fields()
-    rv$input_fields <- append(rv$input_fields, list(list(name = "", type = "xsd:string")))
+    new_id <- if (length(rv$input_fields) == 0) 1 else max(sapply(rv$input_fields, `[[`, "id")) + 1
+    rv$input_fields <- append(rv$input_fields, list(list(id = new_id, name = "", type = "xsd:string")))
   })
   
   # Añadir un nuevo campo de Output
   observeEvent(input$add_output_field, {
     update_output_fields()
-    rv$output_fields <- append(rv$output_fields, list(list(name = "", type = "xsd:string")))
+    new_id <- if (length(rv$output_fields) == 0) 1 else max(sapply(rv$output_fields, `[[`, "id")) + 1
+    rv$output_fields <- append(rv$output_fields, list(list(id = new_id, name = "", type = "xsd:string")))
   })
   
-  # Generar UI dinámica para los campos de Input
+  # Eliminar un campo de Input
+  observe({
+    lapply(rv$input_fields, function(field) {
+      observeEvent(input[[paste0("remove_input_", field$id)]], {
+        update_input_fields()
+        rv$input_fields <- rv$input_fields[sapply(rv$input_fields, `[[`, "id") != field$id]
+      }, ignoreInit = TRUE, once = TRUE)
+    })
+  })
+  
+  # Eliminar un campo de Output
+  observe({
+    lapply(rv$output_fields, function(field) {
+      observeEvent(input[[paste0("remove_output_", field$id)]], {
+        update_output_fields()
+        rv$output_fields <- rv$output_fields[sapply(rv$output_fields, `[[`, "id") != field$id]
+      }, ignoreInit = TRUE, once = TRUE)
+    })
+  })
+  
+  # Generar UI dinámica para los campos de Input con botón para eliminar
   output$input_fields_ui <- renderUI({
-    lapply(seq_along(rv$input_fields), function(i) {
+    input_ui <- lapply(rv$input_fields, function(field) {
       fluidRow(
-        column(6, textInput(paste0("input_field_name_", i), "Nombre:", value = rv$input_fields[[i]]$name)),
-        column(6, selectInput(paste0("input_field_type_", i), "Tipo", choices = c("xsd:string", "xsd:int", "xsd:boolean"), selected = rv$input_fields[[i]]$type))
+        column(4, textInput(paste0("input_field_name_", field$id), "", value = field$name)),
+        column(4, selectInput(paste0("input_field_type_", field$id), "", choices = c("xsd:string", "xsd:int", "xsd:boolean"), selected = field$type)),
+        column(4, 
+               fluidRow(
+                 actionButton(paste0("remove_input_", field$id), "", icon = icon("trash"), style = "margin-top: 25px;"),
+                 actionButton("add_input_field", "", icon = icon("plus"), style = "margin-top: 25px; margin-left: 10px;")
+               )
+        )
       )
     })
+    
+    do.call(tagList, input_ui)
   })
   
-  # Generar UI dinámica para los campos de Output
+  # Generar UI dinámica para los campos de Output con botón para eliminar
   output$output_fields_ui <- renderUI({
-    lapply(seq_along(rv$output_fields), function(i) {
+    output_ui <- lapply(rv$output_fields, function(field) {
       fluidRow(
-        column(6, textInput(paste0("output_field_name_", i), "Nombre:", value = rv$output_fields[[i]]$name)),
-        column(6, selectInput(paste0("output_field_type_", i), "Tipo", choices = c("xsd:string", "xsd:int", "xsd:boolean"), selected = rv$output_fields[[i]]$type))
+        column(4, textInput(paste0("output_field_name_", field$id), "", value = field$name)),
+        column(4, selectInput(paste0("output_field_type_", field$id), "", choices = c("xsd:string", "xsd:int", "xsd:boolean"), selected = field$type)),
+        column(4, 
+               fluidRow(
+                 actionButton(paste0("remove_output_", field$id), "", icon = icon("trash"), style = "margin-top: 25px;"),
+                 actionButton("add_output_field", "", icon = icon("plus"), style = "margin-top: 25px; margin-left: 10px;")
+               )
+        )
       )
     })
+    
+    do.call(tagList, output_ui)
   })
   
-  # Actualizar el contenido del WSDL cuando se presione el botón "Generar WSDL"
+  # Generar el WSDL y mostrarlo en la vista previa
   observeEvent(input$generate_wsdl, {
     update_input_fields()
     update_output_fields()
-    
-    input_fields_list <- lapply(seq_along(rv$input_fields), function(i) {
-      list(name = input[[paste0("input_field_name_", i)]], type = input[[paste0("input_field_type_", i)]])
-    })
-    
-    output_fields_list <- lapply(seq_along(rv$output_fields), function(i) {
-      list(name = input[[paste0("output_field_name_", i)]], type = input[[paste0("output_field_type_", i)]])
-    })
-    
-    rv$wsdl_content <- generate_wsdl(input$service_name, input_fields_list, output_fields_list)
+    rv$wsdl_content <- generate_wsdl(input$service_name, rv$input_fields, rv$output_fields)
   })
   
-  # Mostrar la vista previa del WSDL en la interfaz
   output$wsdl_preview <- renderText({
     rv$wsdl_content
   })
   
-  # Descargar el WSDL generado
+  # Permitir la descarga del WSDL
   output$download_wsdl <- downloadHandler(
     filename = function() {
-      paste0(input$service_name, ".wsdl")
+      paste(input$service_name, "wsdl", sep = ".")
     },
     content = function(file) {
       writeLines(rv$wsdl_content, file)
     }
   )
-  
 }
 
-# Ejecutar la aplicación Shiny
+# Ejecutar la aplicación
 shinyApp(ui = ui, server = server)
