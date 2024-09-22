@@ -83,7 +83,8 @@ ui <- fluidPage(
   
   sidebarLayout(
     sidebarPanel(
-      textInput("service_name", "Nombre del servicio web", value = "MiServicioWeb"),
+      h4("Nombre del webservice"),
+      textInput("service_name", "", value = "MiServicioWeb"),
       
       h4("Campos de la request"),
       uiOutput("input_fields_ui"),
