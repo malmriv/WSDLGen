@@ -19,20 +19,48 @@ generate_wsdl <- function(service_name, input_fields, output_fields) {
   request_complex <- xml_add_child(request_element, "xsd:complexType")
   request_sequence <- xml_add_child(request_complex, "xsd:sequence")
   
-  for (field in input_fields) {
-    xml_add_child(request_sequence, "xsd:element", name = field$name, type = field$type,
-                  maxOccurs = "1", minOccurs = "0")
+  add_fields_to_sequence <- function(sequence, fields) {
+    added_mothers <- list()  # Track added mother nodes
+    last_mother_id <- NULL    # Track the last added mother
+    
+    for (field in fields) {
+      isChild <- field$isChild
+      
+      if (is.null(isChild) || !isChild) {
+        # Node is a mother
+        mother_element <- xml_add_child(sequence, "xsd:element", name = field$name)
+        mother_complex <- xml_add_child(mother_element, "xsd:complexType")
+        mother_sequence <- xml_add_child(mother_complex, "xsd:sequence")
+        added_mothers[[length(added_mothers) + 1]] <- field$id  # Mark this mother as added
+        last_mother_id <- field$id  # Update the last mother ID
+        
+      } else if (isChild) {
+        # Node is a child; add it under the last mother
+        if (!is.null(last_mother_id)) {
+          mother_name <- fields[[which(sapply(fields, `[[`, "id") == last_mother_id)]]$name
+          mother_element <- xml_find_first(sequence, paste0(".//xsd:element[@name='", mother_name, "']"))
+          mother_sequence <- xml_find_first(mother_element, ".//xsd:sequence")
+          xml_add_child(mother_sequence, "xsd:element", name = field$name, type = field$type,
+                        maxOccurs = "1", minOccurs = "0")
+        } else {
+          warning(paste("Child", field$name, "does not have a defined mother."))
+        }
+      }
+    }
   }
+  
+  
+  # Add input fields
+  add_fields_to_sequence(request_sequence, input_fields)
   
   response_element <- xml_add_child(schema, "xsd:element", name = "Z_Operacion_Response")
   response_complex <- xml_add_child(response_element, "xsd:complexType")
   response_sequence <- xml_add_child(response_complex, "xsd:sequence")
   
-  for (field in output_fields) {
-    xml_add_child(response_sequence, "xsd:element", name = field$name, type = field$type,
-                  maxOccurs = "1", minOccurs = "0")
-  }
+  # Add output fields
+  add_fields_to_sequence(response_sequence, output_fields)
   
+  # Messages and bindings remain the same
   messages <- xml_add_child(wsdl, "wsdl:message", name = "Z_MensajeRequest")
   xml_add_child(messages, "wsdl:part", name = "parameters", element = "tns:Z_Operacion_Request")
   
