@@ -49,7 +49,6 @@ generate_wsdl <- function(service_name, input_fields, output_fields) {
     }
   }
   
-  
   # Add input fields
   add_fields_to_sequence(request_sequence, input_fields)
   
@@ -83,7 +82,31 @@ generate_wsdl <- function(service_name, input_fields, output_fields) {
   port <- xml_add_child(service, "wsdl:port", name = "Port_RequestResponse", binding = "tns:SOAPBinding_Webservice")
   xml_add_child(port, "soap:address", location = paste0("http://avvale.com/", service_name))
   
+  # Transform childless complex elements to simple elements
+  wsdl <- transform_childless_to_simple(wsdl)
+  
   return(as.character(wsdl))
+}
+
+# Function to transform childless complex elements to simple elements
+transform_childless_to_simple <- function(wsdl) {
+  # Find all complex elements in the WSDL
+  complex_elements <- xml_find_all(wsdl, "//xsd:complexType[not(./xsd:sequence/xsd:element)]/..")
+  
+  # Loop over each complex element that has no children and transform it to a simple element
+  for (element in complex_elements) {
+    element_name <- xml_attr(element, "name")
+    
+    # Remove complex type and sequence
+    xml_remove(xml_find_first(element, ".//xsd:complexType"))
+    
+    # Add type attribute to transform it to a simple element
+    xml_set_attr(element, "type", "xsd:string")
+    xml_set_attr(element, "maxOccurs", "1")
+    xml_set_attr(element, "minOccurs", "0")
+  }
+  
+  return(wsdl)
 }
 
 # Interfaz de usuario (UI)
@@ -199,7 +222,7 @@ server <- function(input, output, session) {
       }, ignoreInit = TRUE, once = TRUE)
     })
   })
-
+  
   observeEvent(input$branch_input_field, {
     update_input_fields()
     new_id <- if (length(rv$input_fields) == 0) 1 else max(sapply(rv$input_fields, `[[`, "id")) + 1
