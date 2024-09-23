@@ -113,7 +113,9 @@ server <- function(input, output, session) {
   rv <- reactiveValues(
     input_fields = list(list(id = 1, name = "Campo1", type = "xsd:string")),
     output_fields = list(list(id = 1, name = "Campo1", type = "xsd:string")),
-    wsdl_content = ""
+    wsdl_content = "",
+    areChildren = FALSE,  # Initialize as FALSE
+    currentMotherId = NULL  # New variable to track the current mother
   )
   
   update_input_fields <- function() {
@@ -136,12 +138,20 @@ server <- function(input, output, session) {
     update_input_fields()
     new_id <- if (length(rv$input_fields) == 0) 1 else max(sapply(rv$input_fields, `[[`, "id")) + 1
     rv$input_fields <- append(rv$input_fields, list(list(id = new_id, name = "", type = "xsd:string")))
+    
+    # Reset currentMotherId and areChildren
+    rv$currentMotherId <- NULL
+    rv$areChildren <- FALSE
   })
   
   observeEvent(input$add_output_field, {
     update_output_fields()
     new_id <- if (length(rv$output_fields) == 0) 1 else max(sapply(rv$output_fields, `[[`, "id")) + 1
     rv$output_fields <- append(rv$output_fields, list(list(id = new_id, name = "", type = "xsd:string")))
+    
+    # Reset currentMotherId and areChildren
+    rv$currentMotherId <- NULL
+    rv$areChildren <- FALSE
   })
   
   observe({
@@ -160,6 +170,52 @@ server <- function(input, output, session) {
         rv$output_fields <- rv$output_fields[sapply(rv$output_fields, `[[`, "id") != field$id]
       }, ignoreInit = TRUE, once = TRUE)
     })
+  })
+
+  observeEvent(input$branch_input_field, {
+    update_input_fields()
+    new_id <- if (length(rv$input_fields) == 0) 1 else max(sapply(rv$input_fields, `[[`, "id")) + 1
+    mother_id <- if (is.null(rv$currentMotherId)) {
+      max(sapply(rv$input_fields, `[[`, "id"))
+    } else {
+      rv$currentMotherId  # Use the current mother if in children mode
+    }
+    
+    # Add the new field with isChild and motherId set
+    rv$input_fields <- append(rv$input_fields, list(list(id = new_id, name = "", type = "xsd:string", isChild = TRUE, motherId = mother_id)))
+    
+    # Log the message to the console
+    if (!is.null(mother_id)) {
+      mother_name <- rv$input_fields[[which(sapply(rv$input_fields, `[[`, "id") == mother_id)]]$name
+      cat("New child generated under:", mother_name, "\n")
+    }
+    
+    # Set areChildren to TRUE and update currentMotherId
+    rv$areChildren <- TRUE
+    rv$currentMotherId <- mother_id
+  })
+  
+  observeEvent(input$branch_output_field, {
+    update_output_fields()
+    new_id <- if (length(rv$output_fields) == 0) 1 else max(sapply(rv$output_fields, `[[`, "id")) + 1
+    mother_id <- if (is.null(rv$currentMotherId)) {
+      max(sapply(rv$output_fields, `[[`, "id"))
+    } else {
+      rv$currentMotherId  # Use the current mother if in children mode
+    }
+    
+    # Add the new field with isChild and motherId set
+    rv$output_fields <- append(rv$output_fields, list(list(id = new_id, name = "", type = "xsd:string", isChild = TRUE, motherId = mother_id)))
+    
+    # Log the message to the console
+    if (!is.null(mother_id)) {
+      mother_name <- rv$output_fields[[which(sapply(rv$output_fields, `[[`, "id") == mother_id)]]$name
+      cat("New child generated under:", mother_name, "\n")
+    }
+    
+    # Set areChildren to TRUE and update currentMotherId
+    rv$areChildren <- TRUE
+    rv$currentMotherId <- mother_id
   })
   
   output$input_fields_ui <- renderUI({
