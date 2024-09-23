@@ -165,9 +165,9 @@ server <- function(input, output, session) {
   output$input_fields_ui <- renderUI({
     # Encabezados
     header_row <- fluidRow(
-      column(4, h5("Nombre")),   # Encabezado para Nombre
-      column(4, h5("Tipo")),     # Encabezado para Tipo
-      column(4, "")               # Espacio vacío para acciones
+      column(4, h5("Nombre")),
+      column(4, h5("Tipo")),
+      column(4, "")
     )
     
     # Campos dinámicos
@@ -179,23 +179,25 @@ server <- function(input, output, session) {
                fluidRow(
                  actionButton(paste0("remove_input_", field$id), "", icon = icon("trash"), style = "margin-top: 25px;"),
                  if (field$id == max(sapply(rv$input_fields, `[[`, "id"))) {
-                   actionButton("add_input_field", "", icon = icon("plus"), style = "margin-top: 25px; margin-left: 5px;")
+                   tagList(
+                     actionButton("add_input_field", "", icon = icon("plus"), style = "margin-top: 25px; margin-left: 5px;"),
+                     actionButton("branch_input_field", "", icon = icon("code-branch"), style = "margin-top: 25px; margin-left: 5px;")
+                   )
                  }
                )
         )
       )
     })
     
-    # Combinar encabezados y campos
     tagList(header_row, input_ui)
   })
   
   output$output_fields_ui <- renderUI({
     # Encabezados
     header_row <- fluidRow(
-      column(4, h5("Nombre")),   # Encabezado para Nombre
-      column(4, h5("Tipo")),     # Encabezado para Tipo
-      column(4, "")               # Espacio vacío para acciones
+      column(4, h5("Nombre")),
+      column(4, h5("Tipo")),
+      column(4, "")
     )
     
     # Campos dinámicos
@@ -207,16 +209,19 @@ server <- function(input, output, session) {
                fluidRow(
                  actionButton(paste0("remove_output_", field$id), "", icon = icon("trash"), style = "margin-top: 25px;"),
                  if (field$id == max(sapply(rv$output_fields, `[[`, "id"))) {
-                   actionButton("add_output_field", "", icon = icon("plus"), style = "margin-top: 25px; margin-left: 5px;")
+                   tagList(
+                     actionButton("add_output_field", "", icon = icon("plus"), style = "margin-top: 25px; margin-left: 5px;"),
+                     actionButton("branch_output_field", "", icon = icon("code-branch"), style = "margin-top: 25px; margin-left: 5px;")
+                   )
                  }
                )
         )
       )
     })
     
-    # Combinar encabezados y campos
     tagList(header_row, output_ui)
   })
+  
   
   observeEvent(input$generate_wsdl, {
     update_input_fields()
